@@ -1,12 +1,13 @@
 package pdv;
 
 import pdvBD.ConexaoBD;
+import pdvBD.ConexaoBDSqlite;
 
 public class Iniciar {
 
 	public static void main(String[] args) {
-		ConexaoBD conecta = new ConexaoBD();
-		
+		telaPdv pdv = new telaPdv();
+		pdv.setVisible(true);
 	}
 
 }

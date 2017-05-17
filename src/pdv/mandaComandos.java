@@ -8,7 +8,7 @@ public class mandaComandos {
 	public mandaComandos(String comando){
 		FileWriter arquivo;
 		try {
-			arquivo = new FileWriter(new File("C:/ACBrMonitorPLUS/ent.txt"));
+			arquivo = new FileWriter(new File("C:/Comandos/ent.txt"));
 			arquivo.write(comando);
 			arquivo.close();
 		} catch (IOException e) {
@@ -17,5 +17,6 @@ public class mandaComandos {
 			e.printStackTrace();
 		}		
 	}
+	
 
 }

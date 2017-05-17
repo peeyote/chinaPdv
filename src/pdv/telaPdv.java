@@ -2,21 +2,26 @@ package pdv;
 
 import java.awt.BorderLayout;
 import java.awt.EventQueue;
-
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.JScrollBar;
+import javax.swing.JScrollPane;
 import javax.swing.border.EmptyBorder;
 
-import pdv.telaPdvMenus.menuSat;
+import pdvBD.ConexaoBDSqlite;
+import pdvConfig.telaConfig;
 
 import java.awt.Color;
 import javax.swing.JLabel;
 import java.awt.Font;
 import java.awt.color.ColorSpace;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.ComponentEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.beans.PropertyVetoException;
+import java.sql.SQLException;
 import java.awt.SystemColor;
 import javax.swing.JTextPane;
 import javax.swing.JTextField;
@@ -40,8 +45,7 @@ public class telaPdv extends JFrame implements KeyListener {
 	private JTextField txtSubTotal;
 	private JPanel panel;
 	private JLabel lblAviso;
-	public JDesktopPane desktopPane;
-	menuSat sat;
+	JLabel lblProdutoAtual;
 
 	public telaPdv() {
 		desenhaTela();
@@ -56,11 +60,6 @@ public class telaPdv extends JFrame implements KeyListener {
 		setContentPane(contentPane);
 
 		contentPane.setLayout(null);
-		desktopPane = new JDesktopPane();
-		desktopPane.setBackground(new Color(0, 0, 0, 0));
-		desktopPane.setBounds(231, 97, 554, 550);
-		desktopPane.setVisible(false);
-		contentPane.add(desktopPane);
 		// PANEL PRODUTOS
 		panelProd = new JPanel();
 		panelProd.setBackground(new Color(46, 139, 87));
@@ -69,13 +68,14 @@ public class telaPdv extends JFrame implements KeyListener {
 
 		contentPane.add(panelProd);
 
-		JLabel lblProdutoAtual = new JLabel("New label");
+		lblProdutoAtual = new JLabel("");
 		lblProdutoAtual.setFont(new Font("Narkisim", Font.PLAIN, 66));
 		panelProd.add(lblProdutoAtual);
 
 		txtPainelProdutos = new JTextPane();
-		txtPainelProdutos.setBounds(71, 160, 450, 391);
-		contentPane.add(txtPainelProdutos);
+		JScrollPane scrl = new JScrollPane(txtPainelProdutos);
+		scrl.setBounds(71, 160, 450, 391);
+		contentPane.add(scrl);
 
 		txtCodProduto = new JTextField();
 		txtCodProduto.setHorizontalAlignment(SwingConstants.CENTER);
@@ -142,19 +142,41 @@ public class telaPdv extends JFrame implements KeyListener {
 		panel.setBounds(71, 577, 463, 82);
 		contentPane.add(panel);
 
-		lblAviso = new JLabel("New label");
+		lblAviso = new JLabel("");
+		lblAviso.setFont(new Font("Narkisim", Font.PLAIN, 41));
 		panel.add(lblAviso);
+		
+		txtVlrUni.setEditable(false);
+		txtPainelProdutos.setEditable(false);
+		txtVlrTotal.setEditable(false);
+		txtQuantidade.setEditable(false);
+		txtSubTotal.setEditable(false);
 
 		txtCodProduto.addKeyListener(this);
+
 	}
 
 	@Override
 	public void keyPressed(KeyEvent e) {
 		if (e.getKeyCode() == KeyEvent.VK_C) {
-			desktopPane.setVisible(true);
-			sat = new menuSat();
-			sat.setVisible(true);
-			desktopPane.add(sat);
+			lblAviso.setText("Tela config...");
+
+			telaConfig conf = new telaConfig();
+
+			// this.dispose();
+		} else if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+			ConexaoBDSqlite con = new ConexaoBDSqlite();
+				try {
+					con.conecta();
+					con.exec("select * from produtos where codigo_prod="+txtCodProduto.getText());
+					lblProdutoAtual.setText(con.resultset.getString("NOME_PROD"));
+					txtVlrUni.setText(con.resultset.getString("VALOR_PROD"));
+					con.desconecta();
+				} catch (Exception e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+				
 		}
 	}
 
@@ -169,4 +191,5 @@ public class telaPdv extends JFrame implements KeyListener {
 		// TODO Auto-generated method stub
 
 	}
+
 }
