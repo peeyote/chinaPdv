@@ -21,6 +21,10 @@ import java.awt.event.ComponentEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.beans.PropertyVetoException;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.awt.SystemColor;
 import javax.swing.JTextPane;
@@ -46,9 +50,112 @@ public class telaPdv extends JFrame implements KeyListener {
 	private JPanel panel;
 	private JLabel lblAviso;
 	JLabel lblProdutoAtual;
-
+	StringBuilder cupom = new StringBuilder();
+	double vlrSub = 0;
+	int idProd = 1;
+	StringBuilder CFe = new StringBuilder();
 	public telaPdv() {
 		desenhaTela();
+
+	}
+
+	@Override
+	public void keyPressed(KeyEvent e) {
+		if (e.getKeyCode() == KeyEvent.VK_C) {
+			lblAviso.setText("Tela config...");
+			telaConfig conf = new telaConfig();
+			this.dispose();
+		} else if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+			adicionarProduto();
+
+		} else if (e.getKeyCode() == KeyEvent.VK_MULTIPLY) {
+			String qnt = txtCodProduto.getText();
+			txtQuantidade.setText(qnt);
+			txtCodProduto.setText("");
+		}else if (e.getKeyCode()== KeyEvent.VK_F){
+			finalizaCupom();
+		}
+	}
+
+	public void criaCupom(){
+		FileWriter arquivo;
+		try {
+			arquivo = new FileWriter(new File("C:/cupom.ini"));
+			arquivo.write(CFe.toString());
+			arquivo.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}		
+	}
+	
+	private void finalizaCupom() {
+		CFe.append("[infCFe]\n\nversao=0.06\n\n");
+		CFe.append("[Identificacao]\n\nCNPJ=11111111111111\n\nsignAC=11111111111111\n\nnumeroCaixa=1\n\n");
+		CFe.append("[Emitente]\n\nCNPJ=11111111111111\n\nIE=111111111111\n\nIM=\n\nindRatISSQN=S\n\ncRegTrib=3\n\n");
+		CFe.append("[Destinatario]\n\nCNPJCPF=11111111111111\n\nxNome=Joao\n\n[Entrega]\n\nxLgr=Rua Cel. Aureliano de Camargo\n\nnro=973\n\nxCpl=\n\nxBairro=Centro\n\nxMun=Tatui\n\nUF=SP\n\n");
+		CFe.append("[Produto001]\n\ncProd=1189\n\ninfAdProd=Teste de Produto\n\ncEAN=\n\nxProd=OVO VERMELHO\n\nNCM=04072100\n\nCFOP=5102\n\nuCom=DZ\n\nCombustivel=0\n\nqCom=510\n\nvUnCom=2,70\n\nindRegra=A\n\nvDesc=0\n\nvOutro=0\n\nvItem12741=137,00\n\n");
+		CFe.append("[ObsFiscoDet001001]\n\nxCampoDet=Teste\n\nxTextoDet=Texto Teste\n\n");
+		CFe.append("[ICMS001]\n\nOrig=0\n\nCST=40\n\n[PIS001]\n\nCST=01\n\n[COFINS001]\n\nCST=01\n\n");
+		CFe.append("[Total]\n\nvCFeLei12741=137,00\n\n[DescAcrEntr]\n\nvDescSubtot=7,00\n\n[Pagto001]\n\ncMP=01\n\nvMP=1400\n\n");
+		CFe.append("[DadosAdicionais]\n\ninfCpl=Teste emissao CFe/SAT\n\n[ObsFisco001]\n\n");
+		CFe.append("xCampo=ObsFisco 1\n\nxTexto=Teste ObsFisco 1\")");
+		
+		criaCupom();
+		mandaComandos envia = new mandaComandos("SAT.CriarEnviarCFe(C:/cupom.ini)");
+		//new mandaComandos("SAT.ImprimirExtratoVenda(\"C:\\ACBrMonitorPLUS\\Enviado\\11111111111111\\201705\\001-000000-satcfe.xml\")");
+		//new mandaComandos("SAT.ImprimirExtratoVenda(\"C:\\ACBrMonitorPLUS\\Enviado\\11111111111111\\201705\\AD20170518175720-725331-env.xml\")");
+		//new mandaComandos("SAT.ImprimirExtratoVenda(c:/AD20170518175720725331env.xml)");
+	}
+
+	@Override
+	public void keyReleased(KeyEvent e) {
+
+	}
+
+	@Override
+	public void keyTyped(KeyEvent e) {
+
+	}
+
+	private void adicionarProduto() {
+		ConexaoBDSqlite con = new ConexaoBDSqlite();
+		try {
+			con.conecta();
+			// CONSULTA PRODUTO NO BANCO
+			con.exec("select * from produtos where codigo_prod=" + txtCodProduto.getText());
+			String nomeProduto = con.resultset.getString("NOME_PROD");
+			String valorProduto = con.resultset.getString("VALOR_PROD");
+			lblProdutoAtual.setText(nomeProduto);
+			txtVlrUni.setText(valorProduto);
+
+			cupom.append(idProd);
+			cupom.append("  ");
+			cupom.append(txtCodProduto.getText().toString());
+			cupom.append("  ");
+			cupom.append(nomeProduto);
+			cupom.append("                ");
+			cupom.append(valorProduto);
+			cupom.append("           ");
+			cupom.append(txtQuantidade.getText().toString());
+			cupom.append("  ");
+			cupom.append("\n");
+			Double vlrTotal = Double.parseDouble(txtVlrUni.getText());
+			Double vlrQnt = Double.parseDouble(txtQuantidade.getText());
+			Double vlrTotalReal = vlrQnt * vlrTotal;
+			txtVlrTotal.setText(vlrTotalReal.toString());
+			txtPainelProdutos.setText(cupom.toString());
+
+			vlrSub += vlrTotalReal;
+			
+			txtSubTotal.setText(""+vlrSub);
+
+			idProd = idProd + 1;
+			con.desconecta();
+		} catch (Exception e) {
+			lblProdutoAtual.setText("Produto n\u00E3o cadastrado !");
+		}
 
 	}
 
@@ -69,7 +176,7 @@ public class telaPdv extends JFrame implements KeyListener {
 		contentPane.add(panelProd);
 
 		lblProdutoAtual = new JLabel("");
-		lblProdutoAtual.setFont(new Font("Narkisim", Font.PLAIN, 66));
+		lblProdutoAtual.setFont(new Font("KodchiangUPC", Font.BOLD, 66));
 		panelProd.add(lblProdutoAtual);
 
 		txtPainelProdutos = new JTextPane();
@@ -90,6 +197,7 @@ public class telaPdv extends JFrame implements KeyListener {
 		contentPane.add(lblCdigoDoProduto);
 
 		txtQuantidade = new JTextField();
+		txtQuantidade.setText("2");
 		txtQuantidade.setHorizontalAlignment(SwingConstants.CENTER);
 		txtQuantidade.setFont(new Font("Narkisim", Font.PLAIN, 40));
 		txtQuantidade.setColumns(10);
@@ -145,7 +253,7 @@ public class telaPdv extends JFrame implements KeyListener {
 		lblAviso = new JLabel("");
 		lblAviso.setFont(new Font("Narkisim", Font.PLAIN, 41));
 		panel.add(lblAviso);
-		
+
 		txtVlrUni.setEditable(false);
 		txtPainelProdutos.setEditable(false);
 		txtVlrTotal.setEditable(false);
@@ -153,43 +261,7 @@ public class telaPdv extends JFrame implements KeyListener {
 		txtSubTotal.setEditable(false);
 
 		txtCodProduto.addKeyListener(this);
+		cupom.append("          CUPOM          \n ID COD BARRAS      NOME PRODUTO     VALOR PRODUTO     QNT \n");
 
 	}
-
-	@Override
-	public void keyPressed(KeyEvent e) {
-		if (e.getKeyCode() == KeyEvent.VK_C) {
-			lblAviso.setText("Tela config...");
-
-			telaConfig conf = new telaConfig();
-
-			// this.dispose();
-		} else if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-			ConexaoBDSqlite con = new ConexaoBDSqlite();
-				try {
-					con.conecta();
-					con.exec("select * from produtos where codigo_prod="+txtCodProduto.getText());
-					lblProdutoAtual.setText(con.resultset.getString("NOME_PROD"));
-					txtVlrUni.setText(con.resultset.getString("VALOR_PROD"));
-					con.desconecta();
-				} catch (Exception e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
-				
-		}
-	}
-
-	@Override
-	public void keyReleased(KeyEvent e) {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	public void keyTyped(KeyEvent e) {
-		// TODO Auto-generated method stub
-
-	}
-
 }
