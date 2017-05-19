@@ -25,7 +25,6 @@ public class ConexaoBD {
 
 			telaPdv pdv = new telaPdv();
 			pdv.setVisible(true);
-			pdv.txtCodProduto.grabFocus();
 
 		} catch (Exception e) {
 			System.out.println("Não foi possível conectar ao banco !" + e.getMessage());

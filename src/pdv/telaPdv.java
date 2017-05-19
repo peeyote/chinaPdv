@@ -10,6 +10,7 @@ import javax.swing.border.EmptyBorder;
 
 import pdvBD.ConexaoBDSqlite;
 import pdvConfig.telaConfig;
+import pdvParametros.teclasPermitidas;
 
 import java.awt.Color;
 import javax.swing.JLabel;
@@ -26,58 +27,95 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.sql.SQLException;
+import java.util.Scanner;
 import java.awt.SystemColor;
 import javax.swing.JTextPane;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.JDesktopPane;
+import javax.swing.border.EtchedBorder;
 
 public class telaPdv extends JFrame implements KeyListener {
 
-	private JPanel contentPane;
-	private JPanel panelProd;
+	private JPanel contentPane, panelProd, panel;
+	private JLabel lblCdigoDoProduto, lblQuantidade, lblValorUnitario, lblValorTotal, lblSubTotal, lblProdutoAtual;
+	private JTextField txtQuantidade, txtCodProduto, txtVlrUni, txtVlrTotal, txtSubTotal;
 	private JTextPane txtPainelProdutos;
-	public JTextField txtCodProduto;
-	private JLabel lblCdigoDoProduto;
-	private JTextField txtQuantidade;
-	private JLabel lblQuantidade;
-	private JTextField txtVlrUni;
-	private JLabel lblValorUnitario;
-	private JLabel lblValorTotal;
-	private JTextField txtVlrTotal;
-	private JLabel lblSubTotal;
-	private JTextField txtSubTotal;
-	private JPanel panel;
-	private JLabel lblAviso;
-	JLabel lblProdutoAtual;
 	StringBuilder cupom = new StringBuilder();
-	double vlrSub = 0;
-	int idProd = 1;
+	StringBuilder cupomImprime = new StringBuilder();
 	StringBuilder CFe = new StringBuilder();
+	double vlrSub = 0;
+	double vlrEntrada = 0;
+	double vlrCupomAPagar;
+	int idProd = 1;
+	private JTextField txtVlrEntrada;
+	private JLabel lblAviso;
+	private JTextField txtVlrTroco;
+	private JLabel lblTroco;
+
 	public telaPdv() {
 		desenhaTela();
-
 	}
 
 	@Override
 	public void keyPressed(KeyEvent e) {
 		if (e.getKeyCode() == KeyEvent.VK_C) {
-			lblAviso.setText("Tela config...");
-			telaConfig conf = new telaConfig();
-			this.dispose();
+			if (txtCodProduto.hasFocus()) {
+				lblAviso.setText("Tela config...");
+				telaConfig conf = new telaConfig();
+				this.dispose();
+			}
 		} else if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-			adicionarProduto();
+			if (txtCodProduto.hasFocus()) {
+				adicionarProduto();
+				txtQuantidade.setText("1");
+				lblAviso.setText("Em venda...");
+				
+				txtCodProduto.setText("");
+				
+				
+			} else if (txtVlrEntrada.hasFocus()) {
+				txtVlrEntrada.setEditable(false);
+				vlrEntrada = Double.parseDouble(txtVlrEntrada.getText());
+				vlrCupomAPagar = vlrEntrada - vlrSub;
+				txtVlrTroco.setText("" + vlrCupomAPagar);
+				
+				imprimeCupom();
+			}
 
 		} else if (e.getKeyCode() == KeyEvent.VK_MULTIPLY) {
-			String qnt = txtCodProduto.getText();
-			txtQuantidade.setText(qnt);
-			txtCodProduto.setText("");
-		}else if (e.getKeyCode()== KeyEvent.VK_F){
-			finalizaCupom();
+			if (txtCodProduto.hasFocus()) {
+				String qnt = txtCodProduto.getText();
+				txtQuantidade.setText(qnt);
+				txtCodProduto.setText("");
+			}
+		} else if (e.getKeyCode() == KeyEvent.VK_F) {
+			if (txtCodProduto.hasFocus()) {
+				finalizaCupom();
+			}
 		}
 	}
 
-	public void criaCupom(){
+	private void imprimeCupom() {
+		CFe.append("ESCPOS.imprimirlinha(\"</fn></ce><n><e>CUPOM</e></n>\") \n");
+		CFe.append("ESCPOS.imprimirlinha(\"</zera>\")\n");
+		CFe.append("ESCPOS.imprimirlinha(\"<ce>Nome do estabelecimento</ce></e>\") \n");
+		CFe.append("ESCPOS.imprimirlinha(\"</fn><ce>Endereço teste, 101 - Bairro italost</ce>\")\n");
+		CFe.append("ESCPOS.imprimirlinha(\"</fn><ce>Neverland terra do nunca, CEP 13.015-000</ce>\")\n");
+		CFe.append("ESCPOS.imprimirlinha(\"CNPJ: 00.000.000/0000-00\")\n");
+		CFe.append("ESCPOS.imprimirlinha(\"</fn></n>IE: 00.000.000.000\")\n");
+		CFe.append("ESCPOS.imprimirlinha(\"</fn></n>IM 0.000.000-0\")\n");
+		CFe.append("ESCPOS.imprimirlinha(\"</linha_dupla>\")\n");
+		CFe.append("ESCPOS.imprimirlinha(\"</zera>\")\n");
+		CFe.append("ESCPOS.imprimirlinha(\"ITEM CÓDIGO      DESCRIÇÃO     QTD VL.UN ST VL.ITEM\")\n");
+		CFe.append("ESCPOS.imprimirlinha(\"</linha_simples>\")\n");
+		CFe.append(cupomImprime.toString());
+		new mandaComandos(CFe.toString());
+		//new mandaComandos(cupomImprime.toString());
+			
+	}
+
+	public void criaCupom() {
 		FileWriter arquivo;
 		try {
 			arquivo = new FileWriter(new File("C:/cupom.ini"));
@@ -87,26 +125,48 @@ public class telaPdv extends JFrame implements KeyListener {
 			e.printStackTrace();
 		} catch (Exception e) {
 			e.printStackTrace();
-		}		
+		}
 	}
-	
+
 	private void finalizaCupom() {
-		CFe.append("[infCFe]\n\nversao=0.06\n\n");
-		CFe.append("[Identificacao]\n\nCNPJ=11111111111111\n\nsignAC=11111111111111\n\nnumeroCaixa=1\n\n");
-		CFe.append("[Emitente]\n\nCNPJ=11111111111111\n\nIE=111111111111\n\nIM=\n\nindRatISSQN=S\n\ncRegTrib=3\n\n");
-		CFe.append("[Destinatario]\n\nCNPJCPF=11111111111111\n\nxNome=Joao\n\n[Entrega]\n\nxLgr=Rua Cel. Aureliano de Camargo\n\nnro=973\n\nxCpl=\n\nxBairro=Centro\n\nxMun=Tatui\n\nUF=SP\n\n");
-		CFe.append("[Produto001]\n\ncProd=1189\n\ninfAdProd=Teste de Produto\n\ncEAN=\n\nxProd=OVO VERMELHO\n\nNCM=04072100\n\nCFOP=5102\n\nuCom=DZ\n\nCombustivel=0\n\nqCom=510\n\nvUnCom=2,70\n\nindRegra=A\n\nvDesc=0\n\nvOutro=0\n\nvItem12741=137,00\n\n");
-		CFe.append("[ObsFiscoDet001001]\n\nxCampoDet=Teste\n\nxTextoDet=Texto Teste\n\n");
-		CFe.append("[ICMS001]\n\nOrig=0\n\nCST=40\n\n[PIS001]\n\nCST=01\n\n[COFINS001]\n\nCST=01\n\n");
-		CFe.append("[Total]\n\nvCFeLei12741=137,00\n\n[DescAcrEntr]\n\nvDescSubtot=7,00\n\n[Pagto001]\n\ncMP=01\n\nvMP=1400\n\n");
-		CFe.append("[DadosAdicionais]\n\ninfCpl=Teste emissao CFe/SAT\n\n[ObsFisco001]\n\n");
-		CFe.append("xCampo=ObsFisco 1\n\nxTexto=Teste ObsFisco 1\")");
-		
-		criaCupom();
-		mandaComandos envia = new mandaComandos("SAT.CriarEnviarCFe(C:/cupom.ini)");
-		//new mandaComandos("SAT.ImprimirExtratoVenda(\"C:\\ACBrMonitorPLUS\\Enviado\\11111111111111\\201705\\001-000000-satcfe.xml\")");
-		//new mandaComandos("SAT.ImprimirExtratoVenda(\"C:\\ACBrMonitorPLUS\\Enviado\\11111111111111\\201705\\AD20170518175720-725331-env.xml\")");
-		//new mandaComandos("SAT.ImprimirExtratoVenda(c:/AD20170518175720725331env.xml)");
+		lblAviso.setText("Digite o valor: ");
+		txtVlrEntrada.grabFocus();
+		txtVlrEntrada.setEditable(true);
+
+		/**
+		 * PARTE PARA EMISSÃO DE CFE AINDA NÃO IMPLEMENTADA
+		 */
+
+		/*
+		 * CFe.append("[infCFe]\n\nversao=0.06\n\n"); CFe.append(
+		 * "[Identificacao]\n\nCNPJ=11111111111111\n\nsignAC=11111111111111\n\nnumeroCaixa=1\n\n"
+		 * ); CFe.append(
+		 * "[Emitente]\n\nCNPJ=11111111111111\n\nIE=111111111111\n\nIM=\n\nindRatISSQN=S\n\ncRegTrib=3\n\n"
+		 * ); CFe.append(
+		 * "[Destinatario]\n\nCNPJCPF=11111111111111\n\nxNome=Joao\n\n[Entrega]\n\nxLgr=Rua Cel. Aureliano de Camargo\n\nnro=973\n\nxCpl=\n\nxBairro=Centro\n\nxMun=Tatui\n\nUF=SP\n\n"
+		 * ); CFe.append(
+		 * "[Produto001]\n\ncProd=1189\n\ninfAdProd=Teste de Produto\n\ncEAN=\n\nxProd=OVO VERMELHO\n\nNCM=04072100\n\nCFOP=5102\n\nuCom=DZ\n\nCombustivel=0\n\nqCom=510\n\nvUnCom=2,70\n\nindRegra=A\n\nvDesc=0\n\nvOutro=0\n\nvItem12741=137,00\n\n"
+		 * ); CFe.
+		 * append("[ObsFiscoDet001001]\n\nxCampoDet=Teste\n\nxTextoDet=Texto Teste\n\n"
+		 * ); CFe.append(
+		 * "[ICMS001]\n\nOrig=0\n\nCST=40\n\n[PIS001]\n\nCST=01\n\n[COFINS001]\n\nCST=01\n\n"
+		 * ); CFe.append(
+		 * "[Total]\n\nvCFeLei12741=137,00\n\n[DescAcrEntr]\n\nvDescSubtot=7,00\n\n[Pagto001]\n\ncMP=01\n\nvMP=1400\n\n"
+		 * ); CFe.
+		 * append("[DadosAdicionais]\n\ninfCpl=Teste emissao CFe/SAT\n\n[ObsFisco001]\n\n"
+		 * ); CFe.append("xCampo=ObsFisco 1\n\nxTexto=Teste ObsFisco 1\")");
+		 * 
+		 * System.out.println(CFe);
+		 * 
+		 * criaCupom(); mandaComandos envia = new
+		 * mandaComandos("SAT.CriarEnviarCFe(C:/cupom.ini)"); // new //
+		 * mandaComandos(
+		 * "SAT.ImprimirExtratoVenda(\"C:\\ACBrMonitorPLUS\\Enviado\\11111111111111\\201705\\001-000000-satcfe.xml\")"
+		 * ); // new // mandaComandos(
+		 * "SAT.ImprimirExtratoVenda(\"C:\\ACBrMonitorPLUS\\Enviado\\11111111111111\\201705\\AD20170518175720-725331-env.xml\")"
+		 * ); // new // mandaComandos(
+		 * "SAT.ImprimirExtratoVenda(c:/AD20170518175720725331env.xml)");
+		 */
 	}
 
 	@Override
@@ -129,7 +189,8 @@ public class telaPdv extends JFrame implements KeyListener {
 			String valorProduto = con.resultset.getString("VALOR_PROD");
 			lblProdutoAtual.setText(nomeProduto);
 			txtVlrUni.setText(valorProduto);
-
+			cupomImprime.append("ESCPOS.imprimirlinha(\"</fn></n>"+idProd+" "+txtCodProduto.getText().toString()+" "+nomeProduto+"  "+txtQuantidade.getText().toString()+"    "+txtVlrUni.getText().toString()+"  F1    "+txtVlrTotal.getText().toString()+"\")\n");
+			
 			cupom.append(idProd);
 			cupom.append("  ");
 			cupom.append(txtCodProduto.getText().toString());
@@ -148,8 +209,8 @@ public class telaPdv extends JFrame implements KeyListener {
 			txtPainelProdutos.setText(cupom.toString());
 
 			vlrSub += vlrTotalReal;
-			
-			txtSubTotal.setText(""+vlrSub);
+
+			txtSubTotal.setText("" + vlrSub);
 
 			idProd = idProd + 1;
 			con.desconecta();
@@ -161,6 +222,7 @@ public class telaPdv extends JFrame implements KeyListener {
 
 	public void desenhaTela() {
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		this.setResizable(false);
 		setBounds(0, 0, 1024, 768);
 		contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
@@ -171,7 +233,7 @@ public class telaPdv extends JFrame implements KeyListener {
 		panelProd = new JPanel();
 		panelProd.setBackground(new Color(46, 139, 87));
 		panelProd.setBorder(new javax.swing.border.LineBorder(new java.awt.Color(0, 0, 0), 2, true));
-		panelProd.setBounds(267, 30, 705, 105);
+		panelProd.setBounds(267, 27, 705, 105);
 
 		contentPane.add(panelProd);
 
@@ -197,7 +259,7 @@ public class telaPdv extends JFrame implements KeyListener {
 		contentPane.add(lblCdigoDoProduto);
 
 		txtQuantidade = new JTextField();
-		txtQuantidade.setText("2");
+		txtQuantidade.setText("1");
 		txtQuantidade.setHorizontalAlignment(SwingConstants.CENTER);
 		txtQuantidade.setFont(new Font("Narkisim", Font.PLAIN, 40));
 		txtQuantidade.setColumns(10);
@@ -223,14 +285,14 @@ public class telaPdv extends JFrame implements KeyListener {
 
 		lblValorTotal = new JLabel("Valor total");
 		lblValorTotal.setFont(new Font("SansSerif", Font.BOLD | Font.ITALIC, 15));
-		lblValorTotal.setBounds(580, 404, 169, 14);
+		lblValorTotal.setBounds(580, 384, 169, 14);
 		contentPane.add(lblValorTotal);
 
 		txtVlrTotal = new JTextField();
 		txtVlrTotal.setHorizontalAlignment(SwingConstants.CENTER);
 		txtVlrTotal.setFont(new Font("Narkisim", Font.PLAIN, 40));
 		txtVlrTotal.setColumns(10);
-		txtVlrTotal.setBounds(580, 419, 392, 47);
+		txtVlrTotal.setBounds(580, 399, 392, 47);
 		contentPane.add(txtVlrTotal);
 
 		lblSubTotal = new JLabel("Sub total");
@@ -247,6 +309,8 @@ public class telaPdv extends JFrame implements KeyListener {
 		contentPane.add(txtSubTotal);
 
 		panel = new JPanel();
+		panel.setBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
+		panel.setBackground(SystemColor.textHighlight);
 		panel.setBounds(71, 577, 463, 82);
 		contentPane.add(panel);
 
@@ -254,11 +318,38 @@ public class telaPdv extends JFrame implements KeyListener {
 		lblAviso.setFont(new Font("Narkisim", Font.PLAIN, 41));
 		panel.add(lblAviso);
 
+		txtVlrEntrada = new JTextField();
+		txtVlrEntrada.setDocument(new teclasPermitidas());
+		txtVlrEntrada.setHorizontalAlignment(SwingConstants.CENTER);
+		txtVlrEntrada.setForeground(Color.BLACK);
+		txtVlrEntrada.setFont(new Font("Narkisim", Font.PLAIN, 41));
+		txtVlrEntrada.setEditable(false);
+		txtVlrEntrada.setColumns(5);
+		txtVlrEntrada.setBorder(null);
+		txtVlrEntrada.addKeyListener(this);
+		txtVlrEntrada.setBackground(SystemColor.textHighlight);
+		panel.add(txtVlrEntrada);
+
 		txtVlrUni.setEditable(false);
 		txtPainelProdutos.setEditable(false);
 		txtVlrTotal.setEditable(false);
 		txtQuantidade.setEditable(false);
 		txtSubTotal.setEditable(false);
+
+		txtCodProduto.setDocument(new teclasPermitidas());
+
+		txtVlrTroco = new JTextField();
+		txtVlrTroco.setHorizontalAlignment(SwingConstants.CENTER);
+		txtVlrTroco.setFont(new Font("Narkisim", Font.PLAIN, 40));
+		txtVlrTroco.setEditable(false);
+		txtVlrTroco.setColumns(10);
+		txtVlrTroco.setBounds(580, 492, 392, 47);
+		contentPane.add(txtVlrTroco);
+
+		lblTroco = new JLabel("Valor troco");
+		lblTroco.setFont(new Font("SansSerif", Font.BOLD | Font.ITALIC, 15));
+		lblTroco.setBounds(580, 477, 169, 14);
+		contentPane.add(lblTroco);
 
 		txtCodProduto.addKeyListener(this);
 		cupom.append("          CUPOM          \n ID COD BARRAS      NOME PRODUTO     VALOR PRODUTO     QNT \n");
